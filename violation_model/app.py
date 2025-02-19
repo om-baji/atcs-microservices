@@ -126,5 +126,11 @@ def detect_video():
     logging.info(f"Video processing complete, analyzed {frame_count} frames")
     return jsonify({"detections": detections})
 
+@app.route("/violations/health", method=['GET'])
+def health():
+    return jsonify({
+        "health" : "OK!"
+    })
+
 if __name__ == "__main__":
     app.run(debug=True,port=5000)
