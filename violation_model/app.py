@@ -24,14 +24,16 @@ vehicle_model, plate_detector = None, None
 
 
 def init_models():
-    global vehicle_model, plate_detector
+    global vehicle_model, plate_detector, loaded
     logging.info("Loading models...")
     try:
         model_path = os.path.join(config.MODEL_PATH, config.YOLO_MODEL)
         vehicle_model = YOLO(model_path)
         plate_detector = LicensePlateDetector(config=config.OCR_CONFIG)
+        loaded = True
         logging.info("Models initialized successfully")
     except Exception as e:
+        loaded = False
         logging.error(f"Error initializing models: {e}", exc_info=True)
         raise
 
@@ -129,8 +131,9 @@ def detect_video():
 @app.route("/violations/health", method=['GET'])
 def health():
     return jsonify({
-        "health" : "OK!"
-    })
+      "status": "ok",
+      "model_info": loaded
+})
 
 if __name__ == "__main__":
     app.run(debug=True,port=5000)
