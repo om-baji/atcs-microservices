@@ -1,0 +1,7 @@
+.venv
+violation_model/detected_frames
+violation_model/models
+violation_model/app.log
+violation_model/input_video.mp4
+violation_model/output_video.mp4
+violation_model/wrong_lane_vehicles.txt
