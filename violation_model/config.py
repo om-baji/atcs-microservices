@@ -1,8 +1,8 @@
 # Configuration settings for the vehicle detection and OCR system
 
 # Paths
-VIDEO_PATH = "input_video.mp4"
-OUTPUT_PATH = "output_video.mp4"
+VIDEO_PATH = "anp.mp4"
+OUTPUT_PATH = "anp_output_video.mp4"
 MODEL_PATH = "models/"
 YOLO_MODEL = "yolov8n.pt"  # Use yolov8m.pt or yolov8l.pt for better accuracy
 OCR_CONFIG = '--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'

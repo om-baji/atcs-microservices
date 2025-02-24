@@ -7,7 +7,7 @@ import os
 import time
 
 # Configuration
-VIDEO_PATH = "input_video.mp4"
+VIDEO_PATH = "temp.mp4"
 OUTPUT_PATH = "output_video.mp4"
 SAVE_FRAMES = True
 FRAMES_DIR = "detected_frames"

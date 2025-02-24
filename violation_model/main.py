@@ -5,11 +5,17 @@ from ultralytics import YOLO
 from utility import LicensePlateDetector
 import config
 
+import torch
+# print(torch.__version__)
+# print(torch.version.cuda)  # Check CUDA version in PyTorch
+# print(torch.backends.cudnn.version())  # Check cuDNN version
+# print(torch.cuda.is_available())  # Should return True if PyTorch detects CUDA
+
 
 def init_models():
     # Load vehicle detection model
     model_path = os.path.join(config.MODEL_PATH, config.YOLO_MODEL)
-    vehicle_model = YOLO(model_path)
+    vehicle_model = YOLO(model_path).to(device='cuda')
 
     # Initialize license plate detector
     plate_detector = LicensePlateDetector(config=config.OCR_CONFIG)
@@ -47,7 +53,7 @@ def detect_vehicles(frame, model):
     for result in results:
         boxes = result.boxes
         for box in boxes:
-            # Filter for vehicle classes (car: 2, truck: 7, bus: 5, motorcycle: 3)
+
             if box.cls.cpu().numpy()[0] in [2, 3, 5, 7]:
                 if box.conf.cpu().numpy()[0] < config.CONFIDENCE_THRESHOLD:
                     continue

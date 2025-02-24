@@ -7,6 +7,11 @@ from ultralytics import YOLO
 from utility import LicensePlateDetector
 import config
 from main import determine_lane_direction, detect_vehicles, check_wrong_lane
+import resend
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -18,9 +23,51 @@ logging.basicConfig(
     ]
 )
 
+# Initialize Resend
+resend.api_key = os.environ.get('RESEND_API_KEY')
+RTO_EMAIL = os.environ.get('RTO_EMAIL')
+
 app = Flask(__name__)
 
 vehicle_model, plate_detector = None, None
+
+
+def send_violation_notification(violation_data, image_path=None):
+    """
+    Send email notification about detected traffic violation
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        email_content = f"""
+        Traffic Violation Detected!
+
+        Time: {timestamp}
+
+        Vehicle Details:
+        - License Plate: {violation_data['license_plate'] or 'Not detected'}
+        - Vehicle Class: {violation_data['class']}
+        - Confidence: {violation_data['confidence']:.2%}
+        - Wrong Lane: {'Yes' if violation_data['wrong_lane'] else 'No'}
+
+        Location Details:
+        - Bounding Box: {violation_data['bbox']}
+
+        This is an automated notification from the traffic violation detection system.
+        """
+
+        resend.Emails.send({
+            "from": "traffic-violations@yourdomain.com",
+            "to": RTO_EMAIL,
+            "subject": "🚨 Traffic Violation Alert",
+            "text": email_content
+        })
+
+        logging.info(f"Violation notification email sent to {RTO_EMAIL}")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send email notification: {str(e)}")
+        return False
 
 
 def init_models():
@@ -67,13 +114,19 @@ def detect():
             vehicle["license_plate"] = plate_text
             wrong_lane = check_wrong_lane(vehicle, lanes, tracking_info)
 
-            results.append({
+            result = {
                 "bbox": vehicle["bbox"],
                 "confidence": vehicle["confidence"],
                 "class": vehicle["class"],
                 "license_plate": plate_text,
                 "wrong_lane": wrong_lane
-            })
+            }
+
+            # Send notification if wrong lane violation is detected
+            if wrong_lane:
+                send_violation_notification(result)
+
+            results.append(result)
 
         logging.info(f"Detection successful, detected {len(results)} vehicles")
         return jsonify({"detections": results})
@@ -98,6 +151,7 @@ def detect_video():
 
     frame_count = 0
     detections = []
+    violation_count = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -113,27 +167,42 @@ def detect_video():
             vehicle["license_plate"] = plate_text
             wrong_lane = check_wrong_lane(vehicle, lanes, tracking_info)
 
-            detections.append({
+            result = {
                 "frame": frame_count,
                 "bbox": vehicle["bbox"],
                 "confidence": vehicle["confidence"],
                 "class": vehicle["class"],
                 "license_plate": plate_text,
                 "wrong_lane": wrong_lane
-            })
+            }
+
+            # Send notification if wrong lane violation is detected
+            if wrong_lane:
+                send_violation_notification(result)
+                violation_count += 1
+
+            detections.append(result)
 
         frame_count += 1
 
     cap.release()
-    logging.info(f"Video processing complete, analyzed {frame_count} frames")
-    return jsonify({"detections": detections})
+    logging.info(f"Video processing complete, analyzed {frame_count} frames, detected {violation_count} violations")
+    return jsonify({
+        "detections": detections,
+        "summary": {
+            "frames_processed": frame_count,
+            "total_violations": violation_count
+        }
+    })
 
-@app.route("/violations/health", method=['GET'])
+
+@app.route("/violations/health", methods=['GET'])
 def health():
     return jsonify({
-      "status": "ok",
-      "model_info": loaded
-})
+        "status": "ok",
+        "model_info": loaded
+    })
+
 
 if __name__ == "__main__":
-    app.run(debug=True,port=5000)
+    app.run(debug=True, port=5000)
